@@ -103,7 +103,7 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        "http://localhost:4000/api/superadmin/getadmins"
+        `${process.env.BACKEND_URL}/api/superadmin/getadmins`
       );
       const data = await response.json();
       console.log(data);
@@ -120,7 +120,7 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        "http://localhost:4000/api/superadmin/getclients"
+        `${process.env.BACKEND_URL}/api/superadmin/getclients`
       );
       const data = await response.json();
       console.log(data);
@@ -140,7 +140,7 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`http://localhost:4000/api/superadmin/deleteadmin/${id}`, {
+      const response = await fetch(`${process.env.BACKEND_URL}/api/superadmin/deleteadmin/${id}`, {
         method: "DELETE",
         headers: {
           'Content-Type': 'application/json',
@@ -172,7 +172,7 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`http://localhost:4000/api/superadmin/deleteclient/${id}`, {
+      const response = await fetch(`${process.env.BACKEND_URL}/api/superadmin/deleteclient/${id}`, {
         method: "DELETE",
         headers: {
           'Content-Type': 'application/json',
@@ -318,7 +318,7 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch('http://localhost:4000/api/superadmin/registeradmin', {
+      const response = await fetch(`${process.env.BACKEND_URL}/api/superadmin/registeradmin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -365,7 +365,7 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch('http://localhost:4000/api/superadmin/registerclient', {
+      const response = await fetch(`${process.env.BACKEND_URL}/api/superadmin/registerclient`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -36,7 +36,7 @@ const RegisterForm = ({ userType, onSuccess, switchToLogin }) => {
           throw new Error('Invalid user type');
       }
 
-      const response = await axios.post(`http://localhost:4000/${endpoint}`, formData);
+      const response = await axios.post(`${process.env.BACKEND_URL}/${endpoint}`, formData);
       console.log(response)
       onSuccess();
     } catch (err) {

@@ -39,7 +39,7 @@ const LoginForm = ({ userType, onLogin, switchToRegister }) => {
       console.log('Google login success:', decoded);
 
       // This endpoint will handle both client and user types based on userType prop
-      const endpoint = `http://localhost:4000/api/${userType}/login`;
+      const endpoint = `${process.env.BACKEND_URL}/api/${userType}/login`;
       
       const response = await axios.post(endpoint, {
         token: credentialResponse.credential,
@@ -108,7 +108,7 @@ const LoginForm = ({ userType, onLogin, switchToRegister }) => {
         userType,
       });
 
-      const response = await axios.post(`http://localhost:4000/${endpoint}`, formData);
+      const response = await axios.post(`${process.env.BACKEND_URL}/${endpoint}`, formData);
       
       console.log('Server response for login:', response.data);
       

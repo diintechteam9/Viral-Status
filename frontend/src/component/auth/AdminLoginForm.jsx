@@ -31,7 +31,7 @@ const AdminLoginForm = ({ onLogin, switchToRegister }) => {
         email: formData.email
       });
 
-      const response = await axios.post(`http://localhost:4000/${endpoint}`, formData);
+      const response = await axios.post(`${process.env.BACKEND_URL}/${endpoint}`, formData);
       
       console.log('Server response:', response.data);
       

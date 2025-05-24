@@ -94,7 +94,7 @@ const ClientDashboard = ({ user, onLogout }) => {
         setLoading(true);
         console.log('Fetching files for:', { userId, folderName: currentFolder });
         
-        const response = await axios.post('http://localhost:4000/api/datastore/list-files', {
+        const response = await axios.post(`${process.env.BACKEND_URL}/api/datastore/list-files`, {
           userId,
           folderName: currentFolder
         });
@@ -123,7 +123,7 @@ const ClientDashboard = ({ user, onLogout }) => {
           response.data.files.map(async (file) => {
             try {
               console.log('Processing file:', file);
-              const downloadResponse = await axios.post('http://localhost:4000/api/datastore/get-download-url', {
+              const downloadResponse = await axios.post(`${process.env.BACKEND_URL}/api/datastore/get-download-url`, {
                 fileName: file.fileName,
                 folderName: currentFolder,
                 userId
@@ -193,7 +193,7 @@ const ClientDashboard = ({ user, onLogout }) => {
         });
 
         // 1. Get upload URL
-        const uploadUrlResponse = await axios.post('http://localhost:4000/api/datastore/get-upload-url', {
+        const uploadUrlResponse = await axios.post(`${process.env.BACKEND_URL}/api/datastore/get-upload-url`, {
           fileName: selectedFile.name,
           folderName: currentFolder,
           userId,
@@ -264,14 +264,14 @@ const ClientDashboard = ({ user, onLogout }) => {
     const handleDelete = async (fileName) => {
       try {
         // First delete from S3
-        await axios.post('http://localhost:4000/api/datastore/delete-file', {
+        await axios.post(`${process.env.BACKEND_URL}/api/datastore/delete-file`, {
           fileName,
           folderName: currentFolder,
           userId
         });
 
         // Then delete from MongoDB
-        await axios.post('http://localhost:4000/api/datastore/delete-file-metadata', {
+        await axios.post(`${process.env.BACKEND_URL}/api/datastore/delete-file-metadata`, {
           fileName,
           folderName: currentFolder,
           userId
@@ -294,7 +294,7 @@ const ClientDashboard = ({ user, onLogout }) => {
 
     const handleDownload = async (fileName) => {
       try {
-        const response = await axios.post('http://localhost:4000/api/datastore/get-download-url', {
+        const response = await axios.post(`${process.env.BACKEND_URL}/api/datastore/get-download-url`, {
           fileName,
           folderName: currentFolder,
           userId
@@ -366,7 +366,7 @@ const ClientDashboard = ({ user, onLogout }) => {
         setError('');
 
         // 1. Get upload URL
-        const uploadUrlResponse = await axios.post('http://localhost:4000/api/datastore/get-upload-url', {
+        const uploadUrlResponse = await axios.post(`${process.env.BACKEND_URL}/api/datastore/get-upload-url`, {
           fileName: imageFormData.file.name,
           folderName: currentFolder,
           userId,
