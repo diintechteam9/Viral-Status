@@ -16,7 +16,8 @@ import {
   FaEdit,
   FaTrash,
   FaExternalLinkAlt,
-  FaAngleLeft
+  FaAngleLeft,
+  FaPlus
 } from "react-icons/fa";
 import LoginForm from "../auth/LoginForm";
 
@@ -32,6 +33,22 @@ const AdminDashboard = ({ user, onLogout }) => {
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [selectedClientName, setSelectedClientName] = useState('');
   const [clientcount,setclientcount]=useState(null);
+  const [showAddClientModal, setShowAddClientModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState(null);
+  const [newClient, setNewClient] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    businessName: '',
+    websiteUrl: '',
+    city: '',
+    pincode: '',
+    gstNo: '',
+    panNo: '',
+    aadharNo: ''
+  });
 
   // Check if screen is mobile and handle resize events
   useEffect(() => {
@@ -155,6 +172,91 @@ const AdminDashboard = ({ user, onLogout }) => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  const handleAddClient = async () => {
+    try {
+      if (newClient.password !== newClient.confirmPassword) {
+        alert('Passwords do not match');
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/registerclient`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          name: newClient.name,
+          email: newClient.email,
+          password: newClient.password,
+          businessName: newClient.businessName,
+          websiteUrl: newClient.websiteUrl,
+          city: newClient.city,
+          pincode: newClient.pincode,
+          gstNo: newClient.gstNo,
+          panNo: newClient.panNo,
+          aadharNo: newClient.aadharNo
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to create client');
+      }
+
+      setShowAddClientModal(false);
+      setNewClient({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        businessName: '',
+        websiteUrl: '',
+        city: '',
+        pincode: '',
+        gstNo: '',
+        panNo: '',
+        aadharNo: ''
+      });
+      await getclients();
+      alert('Client created successfully');
+    } catch (error) {
+      console.error('Error creating client:', error);
+      alert(error.message || 'Failed to create client. Please try again.');
+    }
+  };
+
+  const handleDeleteClient = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/deleteclient/${clientToDelete}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete client');
+      }
+
+      setShowDeleteModal(false);
+      setClientToDelete(null);
+      await getclients();
+      alert('Client deleted successfully');
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      alert(error.message || 'Failed to delete client. Please try again.');
+    }
+  };
+
+  const confirmDelete = (clientId) => {
+    setClientToDelete(clientId);
+    setShowDeleteModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Client Login Modal */}
@@ -175,6 +277,160 @@ const AdminDashboard = ({ user, onLogout }) => {
                 </p>
               )}
               <LoginForm userType="client" onLogin={handleClientLogin} switchToRegister={() => {}} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Client Modal */}
+      {showAddClientModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl relative">
+            <button 
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+              onClick={() => setShowAddClientModal(false)}
+            >
+              <FaTimes size={20} />
+            </button>
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4 text-center">Add New Client</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Name</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.name}
+                    onChange={(e) => setNewClient({...newClient, name: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.email}
+                    onChange={(e) => setNewClient({...newClient, email: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Password</label>
+                  <input
+                    type="password"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.password}
+                    onChange={(e) => setNewClient({...newClient, password: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+                  <input
+                    type="password"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.confirmPassword}
+                    onChange={(e) => setNewClient({...newClient, confirmPassword: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Business Name</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.businessName}
+                    onChange={(e) => setNewClient({...newClient, businessName: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Website URL</label>
+                  <input
+                    type="url"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.websiteUrl}
+                    onChange={(e) => setNewClient({...newClient, websiteUrl: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">City</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.city}
+                    onChange={(e) => setNewClient({...newClient, city: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Pincode</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.pincode}
+                    onChange={(e) => setNewClient({...newClient, pincode: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">GST Number</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.gstNo}
+                    onChange={(e) => setNewClient({...newClient, gstNo: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">PAN Number</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.panNo}
+                    onChange={(e) => setNewClient({...newClient, panNo: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Aadhar Number</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={newClient.aadharNo}
+                    onChange={(e) => setNewClient({...newClient, aadharNo: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+                  onClick={handleAddClient}
+                >
+                  Add Client
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4 text-center">Confirm Delete</h2>
+              <p className="text-center text-gray-600 mb-4">
+                Are you sure you want to delete this client? This action cannot be undone.
+              </p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                  onClick={handleDeleteClient}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -321,16 +577,25 @@ const AdminDashboard = ({ user, onLogout }) => {
               <div className="p-4 border-b border-gray-200">
                 <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
                   <h3 className="text-xl font-semibold">Client List</h3>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search clients..."
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                      <FaSearch className="text-gray-400" />
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={() => setShowAddClientModal(true)}
+                      className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                    >
+                      <FaPlus className="mr-2" />
+                      Add Client
+                    </button>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search clients..."
+                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                      <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                        <FaSearch className="text-gray-400" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -397,15 +662,21 @@ const AdminDashboard = ({ user, onLogout }) => {
                               <p>Aadhar: {client.aadharNo}</p>
                             </div>
                           </td>
-                          <td className="px-6 py-6 text-sm font-medium flex">
-                              <button 
-                                onClick={() => openClientLogin(client._id, client.email, client.name)} 
-                                className="text-red-500 hover:text-red-700" 
-                                title="clientlogin"
-                              >
-                                login
-                              </button>
-                              
+                          <td className="px-6 py-6 text-sm font-medium flex space-x-4">
+                            <button 
+                              onClick={() => openClientLogin(client._id, client.email, client.name)} 
+                              className="text-blue-500 hover:text-blue-700" 
+                              title="Client Login"
+                            >
+                              Login
+                            </button>
+                            <button 
+                              onClick={() => confirmDelete(client._id)} 
+                              className="text-red-500 hover:text-red-700" 
+                              title="Delete Client"
+                            >
+                              <FaTrash />
+                            </button>
                           </td>
                         </tr>
                       ))}

@@ -63,6 +63,10 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
     panNo: '',
     aadharNo: ''
   });
+  const [showDeleteAdminModal, setShowDeleteAdminModal] = useState(false);
+  const [showDeleteClientModal, setShowDeleteClientModal] = useState(false);
+  const [adminToDelete, setAdminToDelete] = useState(null);
+  const [clientToDelete, setClientToDelete] = useState(null);
 
   // Check if screen is mobile and handle resize events
   useEffect(() => {
@@ -154,10 +158,9 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
         throw new Error(data.message || 'Failed to delete admin');
       }
 
-      // Refresh the admin list
+      setShowDeleteAdminModal(false);
+      setAdminToDelete(null);
       await getAdmins();
-      
-      // Show success message
       alert('Admin deleted successfully');
     } catch (error) {
       console.error('Error deleting admin:', error);
@@ -186,15 +189,24 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
         throw new Error(data.message || 'Failed to delete client');
       }
 
-      // Refresh the client list
+      setShowDeleteClientModal(false);
+      setClientToDelete(null);
       await getClients();
-      
-      // Show success message
       alert('Client deleted successfully');
     } catch (error) {
       console.error('Error deleting client:', error);
       alert(error.message || 'Failed to delete client. Please try again.');
     }
+  };
+
+  const confirmDeleteAdmin = (adminId) => {
+    setAdminToDelete(adminId);
+    setShowDeleteAdminModal(true);
+  };
+
+  const confirmDeleteClient = (clientId) => {
+    setClientToDelete(clientId);
+    setShowDeleteClientModal(true);
   };
 
   useEffect(() => {
@@ -662,6 +674,62 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
         </div>
       )}
 
+      {/* Delete Admin Confirmation Modal */}
+      {showDeleteAdminModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4 text-center">Confirm Delete</h2>
+              <p className="text-center text-gray-600 mb-4">
+                Are you sure you want to delete this admin? This action cannot be undone.
+              </p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  onClick={() => setShowDeleteAdminModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                  onClick={() => deleteadmin(adminToDelete)}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Client Confirmation Modal */}
+      {showDeleteClientModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4 text-center">Confirm Delete</h2>
+              <p className="text-center text-gray-600 mb-4">
+                Are you sure you want to delete this client? This action cannot be undone.
+              </p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  onClick={() => setShowDeleteClientModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                  onClick={() => deleteclient(clientToDelete)}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Overlay for mobile when sidebar is open */}
       {isMobile && isSidebarOpen && (
         <div
@@ -887,7 +955,7 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
                             </button> */}
                             <button 
                               className="text-red-500 hover:text-red-700" 
-                              onClick={()=>deleteadmin(admin._id)}
+                              onClick={() => confirmDeleteAdmin(admin._id)}
                               title="Delete admin"
                             >
                               Delete
@@ -1011,7 +1079,7 @@ const SuperAdminDashboard = ({ user, onLogout }) => {
                             </button> */}
                             <button 
                               className="text-red-500 hover:text-red-700"
-                              onClick={()=>deleteclient(client._id)} 
+                              onClick={() => confirmDeleteClient(client._id)} 
                               title="Delete client"
                             >
                               Delete

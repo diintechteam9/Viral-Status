@@ -115,9 +115,101 @@ const getClients = async (req, res) => {
     }
   };
 
+  const registerclient = async (req, res) => {
+    try {
+      const {
+        name,
+        email,
+        password,
+        businessName,
+        websiteUrl,
+        city,
+        pincode,
+        gstNo,
+        panNo,
+        aadharNo
+      } = req.body;
+  
+      // Check if client already exists
+      const existingClient = await Client.findOne({ email });
+      if (existingClient) {
+        return res.status(400).json({
+          success: false,
+          message: "Client with this email already exists"
+        });
+      }
+  
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+  
+      // Create new client
+      const client = await Client.create({
+        name,
+        email,
+        password: hashedPassword,
+        businessName,
+        websiteUrl,
+        city,
+        pincode,
+        gstNo,
+        panNo,
+        aadharNo
+      });
+  
+      // Remove password from response
+      const clientResponse = client.toObject();
+      delete clientResponse.password;
+  
+      res.status(201).json({
+        success: true,
+        message: "Client created successfully",
+        data: clientResponse
+      });
+    } catch (error) {
+      console.error('Error creating client:', error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create client"
+      });
+    }
+  };
+
+  const deleteclient = async(req, res) => {
+    try {
+        const id = req.params.id;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Client ID is required"
+            });
+        }
+  
+        const client = await Client.findByIdAndDelete(id);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Client not found"
+            });
+        }
+  
+        res.status(200).json({
+            success: true,
+            message: "Client deleted successfully"
+        });
+    } catch (error) {
+        console.error('Error deleting client:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete client"
+        });
+    }
+  }
+
 module.exports = {
   registerAdmin,
+  registerclient,
   loginAdmin,
   getClients,
-  getClientById
+  getClientById,
+  deleteclient
 };

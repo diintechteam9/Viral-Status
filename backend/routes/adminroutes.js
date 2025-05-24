@@ -1,5 +1,5 @@
 const express = require("express");
-const { registerAdmin, loginAdmin, getClients, getClientById } = require("../controllers/admincontroller");
+const { registerAdmin, loginAdmin, getClients, getClientById, registerclient, deleteclient } = require("../controllers/admincontroller");
 const router = express.Router();
 
 router.get("/", (req, res) => {
@@ -14,5 +14,8 @@ router.get("/getclients", getClients);
 
 router.get("/getclientbyid/:id", getClientById);
 
+router.post('/registerclient', registerclient);
+
+router.delete('/deleteclient/:id', deleteclient);
 
 module.exports = router;
