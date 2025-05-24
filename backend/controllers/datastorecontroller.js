@@ -136,18 +136,28 @@ const listFiles = async (req, res) => {
 
         console.log('Listing files for:', { userId, folderName });
 
-        // Get files from MongoDB first
-        const datastoreEntries = await Datastore.find({
-            'metadata.userId': userId,
-            'metadata.folderName': folderName
-        });
+        // First, let's check all entries in the database
+        const allEntries = await Datastore.find({});
+        console.log('All entries in database:', JSON.stringify(allEntries, null, 2));
+        console.log('Total entries in database:', allEntries.length);
 
-        console.log('MongoDB Query:', {
+        // Now check entries for this user
+        const userEntries = await Datastore.find({ 'metadata.userId': userId });
+        console.log('Entries for this user:', JSON.stringify(userEntries, null, 2));
+        console.log('Total entries for user:', userEntries.length);
+
+        // Finally, check entries for this folder
+        const query = {
             'metadata.userId': userId,
             'metadata.folderName': folderName
-        });
-        console.log('Found MongoDB entries:', datastoreEntries.length);
-        console.log('MongoDB entries:', JSON.stringify(datastoreEntries, null, 2));
+        };
+        
+        console.log('MongoDB Query:', query);
+        
+        const datastoreEntries = await Datastore.find(query);
+        
+        console.log('Raw MongoDB Response:', JSON.stringify(datastoreEntries, null, 2));
+        console.log('Number of entries found:', datastoreEntries.length);
 
         // If no entries in MongoDB, return empty array
         if (!datastoreEntries || datastoreEntries.length === 0) {

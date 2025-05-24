@@ -92,12 +92,26 @@ const ClientDashboard = ({ user, onLogout }) => {
     const fetchFiles = async () => {
       try {
         setLoading(true);
-        console.log('Fetching files for:', { userId, folderName: currentFolder });
+        const userId = localStorage.getItem('userId');
         
-        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/datastore/list-files`, {
-          userId,
-          folderName: currentFolder
+        console.log('Fetching files with data:', { 
+          userId, 
+          folderName: currentFolder,
+          token: localStorage.getItem('token') 
         });
+        
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/datastore/list-files`,
+          {
+            userId,
+            folderName: currentFolder
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
         
         console.log('Raw MongoDB Response:', response.data);
         
@@ -123,11 +137,19 @@ const ClientDashboard = ({ user, onLogout }) => {
           response.data.files.map(async (file) => {
             try {
               console.log('Processing file:', file);
-              const downloadResponse = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/datastore/get-download-url`, {
-                fileName: file.fileName,
-                folderName: currentFolder,
-                userId
-              });
+              const downloadResponse = await axios.post(
+                `${import.meta.env.VITE_BACKEND_URL}/api/datastore/get-download-url`,
+                {
+                  fileName: file.fileName,
+                  folderName: currentFolder,
+                  userId
+                },
+                {
+                  headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  }
+                }
+              );
               
               console.log('Download URL response:', downloadResponse.data);
               
