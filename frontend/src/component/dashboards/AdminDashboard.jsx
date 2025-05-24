@@ -201,9 +201,9 @@ const AdminDashboard = ({ user, onLogout }) => {
 
       const data = await response.json();
       
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to create client');
-      }
+      // if (!response.ok) {
+      //   throw new Error(data.message || 'Failed to create client');
+      // }
 
       setShowAddClientModal(false);
       setNewClient({
@@ -219,8 +219,8 @@ const AdminDashboard = ({ user, onLogout }) => {
         panNo: '',
         aadharNo: ''
       });
-      await getclients();
       alert('Client created successfully');
+      await getclients();
     } catch (error) {
       console.error('Error creating client:', error);
       alert(error.message || 'Failed to create client. Please try again.');
