@@ -11,6 +11,11 @@ import axios from 'axios'
 import './App.css'
 import Home from './component/Home'
 
+// Configure axios defaults
+axios.defaults.withCredentials = true;
+axios.defaults.headers.common['Content-Type'] = 'application/json';
+axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL;
+
 // Protected Route component
 const ProtectedRoute = ({ isAllowed, redirectPath = '/', children }) => {
   if (!isAllowed) {
