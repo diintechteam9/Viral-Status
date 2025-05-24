@@ -27,7 +27,7 @@ const AdminRegisterForm = ({ onSuccess, switchToLogin }) => {
     setError('');
 
     try {
-      const response = await axios.post(`${process.env.BACKEND_URL}/api/admin/register`, formData);
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/admin/register`, formData);
       
       console.log('Registration response:', response.data);
       

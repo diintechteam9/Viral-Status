@@ -71,7 +71,7 @@ const AdminDashboard = ({ user, onLogout }) => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `${process.env.BACKEND_URL}/api/admin/getclients`
+        `${import.meta.env.VITE_BACKEND_URL}/api/admin/getclients`
       );
       const data = await response.json();
       console.log(data.data);

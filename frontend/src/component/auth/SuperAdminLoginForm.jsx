@@ -31,7 +31,7 @@ const SuperAdminLoginForm = ({ onLogin}) => {
         email: formData.email
       });
 
-      const response = await axios.post(`${process.env.BACKEND_URL}/${endpoint}`, formData);
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/${endpoint}`, formData);
       
       console.log('Server response:', response);
       
