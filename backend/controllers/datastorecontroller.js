@@ -134,38 +134,39 @@ const listFiles = async (req, res) => {
             });
         }
 
-        const prefix = `${userId}/${folderName}/`;
-        console.log('Listing files with prefix:', prefix);
+        console.log('Listing files for:', { userId, folderName });
 
-        const command = new ListObjectsV2Command({ 
-            Bucket: BUCKET_NAME, 
-            Prefix: prefix 
-        });
-
-        const data = await s3.send(command);
-        const files = (data.Contents || [])
-            .filter(item => !item.Key.endsWith('/.keep'))
-            .map(item => item.Key.replace(prefix, ''));
-
-        // Get additional metadata from datastore
+        // Get files from MongoDB first
         const datastoreEntries = await Datastore.find({
             'metadata.userId': userId,
             'metadata.folderName': folderName
         });
 
-        const filesWithMetadata = files.map(fileName => {
-            const entry = datastoreEntries.find(e => e.fileName === fileName);
-            return {
-                fileName,
-                ...(entry ? {
-                    id: entry._id,
-                    type: entry.type,
-                    title: entry.title,
-                    description: entry.description,
-                    fileUrl: entry.fileUrl
-                } : {})
-            };
+        console.log('MongoDB Query:', {
+            'metadata.userId': userId,
+            'metadata.folderName': folderName
         });
+        console.log('Found MongoDB entries:', datastoreEntries.length);
+        console.log('MongoDB entries:', JSON.stringify(datastoreEntries, null, 2));
+
+        // If no entries in MongoDB, return empty array
+        if (!datastoreEntries || datastoreEntries.length === 0) {
+            console.log('No entries found in MongoDB');
+            return res.status(200).json({ files: [] });
+        }
+
+        // Map MongoDB entries to the expected format
+        const filesWithMetadata = datastoreEntries.map(entry => ({
+            fileName: entry.fileName,
+            id: entry._id,
+            type: entry.type,
+            title: entry.title,
+            description: entry.description,
+            fileUrl: entry.fileUrl,
+            createdAt: entry.createdAt
+        }));
+
+        console.log('Processed files:', JSON.stringify(filesWithMetadata, null, 2));
 
         res.status(200).json({ files: filesWithMetadata });
     } catch (err) {

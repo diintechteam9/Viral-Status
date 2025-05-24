@@ -129,6 +129,8 @@ const ClientDashboard = ({ user, onLogout }) => {
                 userId
               });
               
+              console.log('Download URL response:', downloadResponse.data);
+              
               const fileWithUrl = {
                 ...file,
                 fileUrl: downloadResponse.data.url
