@@ -760,7 +760,7 @@ const ClientDashboard = ({ user, onLogout }) => {
       >
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
           {isSidebarOpen && (
-            <h4 className="m-0 font-semibold text-lg truncate">Business Panel</h4>
+            <h4 className="m-0 font-semibold text-lg truncate">Client Dashboard</h4>
           )}
           <button
             className="text-black hover:text-gray-700 focus:outline-none"
