@@ -207,7 +207,20 @@ const getDownloadUrl = async (req, res) => {
             Key: key 
         });
 
-        const url = await getSignedUrl(s3, command, { expiresIn: 3600 }); // 1 hour expiry
+        // Generate URL with explicit expiration time
+        const url = await getSignedUrl(s3, command, { 
+            expiresIn: 3600, // 1 hour expiry
+            signableHeaders: new Set(['host']),
+            unhoistableHeaders: new Set(['host'])
+        });
+
+        console.log('Generated download URL:', {
+            key,
+            urlLength: url.length,
+            urlStart: url.substring(0, 50),
+            urlEnd: url.substring(-50)
+        });
+
         res.json({ url });
     } catch (err) {
         console.error("DOWNLOAD URL ERROR:", err);

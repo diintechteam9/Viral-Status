@@ -22,6 +22,7 @@ import {
   FaFolderPlus
 } from 'react-icons/fa';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config';
 
 const ClientDashboard = ({ user, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -93,37 +94,54 @@ const ClientDashboard = ({ user, onLogout }) => {
       try {
         setLoading(true);
         const userId = localStorage.getItem('userId');
+        const token = localStorage.getItem('token');
+        
+        if (!userId || !token) {
+          console.error('Missing authentication:', { userId, token: !!token });
+          setError('Authentication required. Please log in again.');
+          return;
+        }
         
         console.log('Fetching files with data:', { 
           userId, 
           folderName: currentFolder,
-          token: localStorage.getItem('token') 
+          token: token.substring(0, 10) + '...' // Log partial token for security
         });
         
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/datastore/list-files`,
+          `${API_BASE_URL}/api/datastore/list-files`,
           {
             userId,
             folderName: currentFolder
           },
           {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Authorization': `Bearer ${token}`
             }
           }
         );
         
-        console.log('Raw MongoDB Response:', response.data);
+        console.log('Raw MongoDB Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: response.data,
+          headers: response.headers
+        });
         
-        if (!response.data || !response.data.files) {
+        if (!response.data) {
+          console.error('Empty response data');
+          setError('Server returned empty response');
+          return;
+        }
+
+        if (!response.data.files) {
           console.error('Invalid response format:', response.data);
-          setError('Invalid response from server');
+          setError('Invalid response format from server');
           return;
         }
 
         if (response.data.files.length === 0) {
-          console.log('No files found in MongoDB for folder:', currentFolder);
-          console.log('Query parameters:', {
+          console.log('No files found in MongoDB for folder:', {
             userId,
             folderName: currentFolder,
             originalFolderName: currentFolder
@@ -136,9 +154,14 @@ const ClientDashboard = ({ user, onLogout }) => {
         const filesWithUrls = await Promise.all(
           response.data.files.map(async (file) => {
             try {
-              console.log('Processing file:', file);
+              console.log('Processing file:', {
+                fileName: file.fileName,
+                folderName: currentFolder,
+                userId
+              });
+
               const downloadResponse = await axios.post(
-                `${import.meta.env.VITE_BACKEND_URL}/api/datastore/get-download-url`,
+                `${API_BASE_URL}/api/datastore/get-download-url`,
                 {
                   fileName: file.fileName,
                   folderName: currentFolder,
@@ -146,39 +169,64 @@ const ClientDashboard = ({ user, onLogout }) => {
                 },
                 {
                   headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`
                   }
                 }
               );
               
-              console.log('Download URL response:', downloadResponse.data);
+              console.log('Download URL response:', {
+                status: downloadResponse.status,
+                data: downloadResponse.data
+              });
+              
+              if (!downloadResponse.data || !downloadResponse.data.url) {
+                console.error('Invalid download URL response:', downloadResponse.data);
+                return {
+                  ...file,
+                  fileUrl: null,
+                  error: 'Invalid download URL response'
+                };
+              }
               
               const fileWithUrl = {
                 ...file,
                 fileUrl: downloadResponse.data.url
               };
-              console.log('File with URL:', fileWithUrl);
+              console.log('File with URL:', {
+                fileName: fileWithUrl.fileName,
+                hasUrl: !!fileWithUrl.fileUrl
+              });
               return fileWithUrl;
             } catch (err) {
-              console.error('Error getting download URL for file:', file.fileName, err);
+              console.error('Error getting download URL for file:', {
+                fileName: file.fileName,
+                error: err.message,
+                response: err.response?.data,
+                status: err.response?.status
+              });
               return {
                 ...file,
                 fileUrl: null,
-                error: 'Failed to get download URL'
+                error: `Failed to get download URL: ${err.message}`
               };
             }
           })
         );
         
-        console.log('Final processed files:', filesWithUrls);
+        console.log('Final processed files:', {
+          count: filesWithUrls.length,
+          filesWithErrors: filesWithUrls.filter(f => f.error).length,
+          filesWithUrls: filesWithUrls.filter(f => f.fileUrl).length
+        });
         setFiles(filesWithUrls);
       } catch (err) {
         console.error('Error fetching files:', {
-          error: err,
+          message: err.message,
           response: err.response?.data,
-          status: err.response?.status
+          status: err.response?.status,
+          stack: err.stack
         });
-        setError('Failed to fetch files: ' + (err.response?.data?.message || err.message));
+        setError(`Failed to fetch files: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -217,7 +265,7 @@ const ClientDashboard = ({ user, onLogout }) => {
         });
 
         // 1. Get upload URL
-        const uploadUrlResponse = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/datastore/get-upload-url`, {
+        const uploadUrlResponse = await axios.post(`${API_BASE_URL}/api/datastore/get-upload-url`, {
           fileName: selectedFile.name,
           folderName: currentFolder,
           userId,
@@ -259,27 +307,8 @@ const ClientDashboard = ({ user, onLogout }) => {
         await fetchFiles();
         setSelectedFile(null);
       } catch (err) {
-        console.error('Upload error details:', {
-          message: err.message,
-          response: err.response?.data,
-          status: err.response?.status,
-          stack: err.stack
-        });
-        
-        let errorMessage = 'Failed to upload file. Please try again.';
-        
-        if (err.message.includes('<?xml')) {
-          // Try to parse XML error response from S3
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(err.message, 'text/xml');
-          const errorCode = xmlDoc.getElementsByTagName('Code')[0]?.textContent;
-          const errorMessageText = xmlDoc.getElementsByTagName('Message')[0]?.textContent;
-          errorMessage = `S3 Error: ${errorCode} - ${errorMessageText}`;
-        } else if (err.response?.data) {
-          errorMessage = err.response.data.error || err.response.data.details || errorMessage;
-        }
-        
-        setError(errorMessage);
+        console.error('Upload error:', err);
+        setError('Failed to upload file');
       } finally {
         setUploading(false);
       }
@@ -288,14 +317,14 @@ const ClientDashboard = ({ user, onLogout }) => {
     const handleDelete = async (fileName) => {
       try {
         // First delete from S3
-        await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/datastore/delete-file`, {
+        await axios.post(`${API_BASE_URL}/api/datastore/delete-file`, {
           fileName,
           folderName: currentFolder,
           userId
         });
 
         // Then delete from MongoDB
-        await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/datastore/delete-file-metadata`, {
+        await axios.post(`${API_BASE_URL}/api/datastore/delete-file-metadata`, {
           fileName,
           folderName: currentFolder,
           userId
@@ -318,7 +347,7 @@ const ClientDashboard = ({ user, onLogout }) => {
 
     const handleDownload = async (fileName) => {
       try {
-        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/datastore/get-download-url`, {
+        const response = await axios.post(`${API_BASE_URL}/api/datastore/get-download-url`, {
           fileName,
           folderName: currentFolder,
           userId
@@ -390,7 +419,7 @@ const ClientDashboard = ({ user, onLogout }) => {
         setError('');
 
         // 1. Get upload URL
-        const uploadUrlResponse = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/datastore/get-upload-url`, {
+        const uploadUrlResponse = await axios.post(`${API_BASE_URL}/api/datastore/get-upload-url`, {
           fileName: imageFormData.file.name,
           folderName: currentFolder,
           userId,
@@ -429,7 +458,7 @@ const ClientDashboard = ({ user, onLogout }) => {
         });
       } catch (err) {
         console.error('Upload error:', err);
-        setError(err.message || 'Failed to upload image');
+        setError('Failed to upload image');
       } finally {
         setUploading(false);
       }
@@ -445,7 +474,6 @@ const ClientDashboard = ({ user, onLogout }) => {
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">Gallery</h2>
             <select
               value={currentFolder}
               onChange={(e) => setCurrentFolder(e.target.value)}
@@ -502,7 +530,12 @@ const ClientDashboard = ({ user, onLogout }) => {
                     className="w-64 h-full object-fill p-2"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
+                      // Use a base64-encoded SVG as fallback
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBsb2FkIGVycm9yPC90ZXh0Pjwvc3ZnPg==';
+                      console.error('Image load error:', {
+                        fileName: file.fileName,
+                        fileUrl: file.fileUrl
+                      });
                     }}
                   />
                   {/* Overlay with actions */}

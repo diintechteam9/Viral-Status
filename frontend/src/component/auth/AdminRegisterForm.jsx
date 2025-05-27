@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaLock, FaUser, FaEnvelope, FaKey, FaUserShield } from 'react-icons/fa';
+import { API_BASE_URL } from '../../config';
 
 const AdminRegisterForm = ({ onSuccess, switchToLogin }) => {
   const [formData, setFormData] = useState({
@@ -27,7 +28,7 @@ const AdminRegisterForm = ({ onSuccess, switchToLogin }) => {
     setError('');
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/admin/register`, formData);
+      const response = await axios.post(`${API_BASE_URL}/api/admin/register`, formData);
       
       console.log('Registration response:', response.data);
       

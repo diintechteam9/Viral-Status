@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { FaUser, FaEnvelope, FaLock, FaBuilding, FaIdCard, FaGlobe, FaMapMarkerAlt } from 'react-icons/fa';
+import { API_BASE_URL } from '../../config';
 
 const RegisterForm = ({ userType, onSuccess, switchToLogin }) => {
   const [formData, setFormData] = useState({});
@@ -36,7 +37,7 @@ const RegisterForm = ({ userType, onSuccess, switchToLogin }) => {
           throw new Error('Invalid user type');
       }
 
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/${endpoint}`, formData);
+      const response = await axios.post(`${API_BASE_URL}/${endpoint}`, formData);
       console.log(response)
       onSuccess();
     } catch (err) {

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 import { FaGoogle, FaEnvelope, FaLock } from 'react-icons/fa';
+import { API_BASE_URL } from '../../config';
 
 const LoginForm = ({ userType, onLogin, switchToRegister }) => {
   const [formData, setFormData] = useState({
@@ -39,7 +40,7 @@ const LoginForm = ({ userType, onLogin, switchToRegister }) => {
       console.log('Google login success:', decoded);
 
       // This endpoint will handle both client and user types based on userType prop
-      const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/${userType}/login`;
+      const endpoint = `${API_BASE_URL}/api/${userType}/login`;
       
       const response = await axios.post(endpoint, {
         token: credentialResponse.credential,
@@ -92,9 +93,6 @@ const LoginForm = ({ userType, onLogin, switchToRegister }) => {
         case 'user':
           endpoint = 'api/user/login';
           break;
-        case 'admin':
-          endpoint = 'api/admin/login';
-          break;
         case 'client':
           endpoint = 'api/client/login';
           break;
@@ -108,7 +106,7 @@ const LoginForm = ({ userType, onLogin, switchToRegister }) => {
         userType,
       });
 
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/${endpoint}`, formData);
+      const response = await axios.post(`${API_BASE_URL}/${endpoint}`, formData);
       
       console.log('Server response for login:', response.data);
       

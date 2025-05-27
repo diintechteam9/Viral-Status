@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAsyncError, useNavigate } from "react-router-dom";
+import { API_BASE_URL } from '../../config';
 import {
   FaChartBar,
   FaDatabase,
@@ -88,7 +89,7 @@ const AdminDashboard = ({ user, onLogout }) => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/admin/getclients`
+        `${API_BASE_URL}/api/admin/getclients`
       );
       const data = await response.json();
       console.log(data.data);
@@ -179,7 +180,7 @@ const AdminDashboard = ({ user, onLogout }) => {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/registerclient`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/registerclient`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -229,7 +230,7 @@ const AdminDashboard = ({ user, onLogout }) => {
 
   const handleDeleteClient = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/deleteclient/${clientToDelete}`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/deleteclient/${clientToDelete}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

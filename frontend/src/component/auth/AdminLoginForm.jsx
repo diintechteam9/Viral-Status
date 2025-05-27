@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaLock, FaUser, FaSignInAlt } from 'react-icons/fa';
+import { API_BASE_URL } from '../../config';
 
 const AdminLoginForm = ({ onLogin, switchToRegister }) => {
   const [formData, setFormData] = useState({
@@ -31,7 +32,7 @@ const AdminLoginForm = ({ onLogin, switchToRegister }) => {
         email: formData.email
       });
 
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/${endpoint}`, formData);
+      const response = await axios.post(`${API_BASE_URL}/${endpoint}`, formData);
       
       console.log('Server response:', response.data);
       

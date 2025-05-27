@@ -11,6 +11,7 @@ import {
   FaHistory,
   FaQuestionCircle
 } from 'react-icons/fa';
+import { API_BASE_URL } from '../../config';
 
 const UserDashboard = ({ user, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
