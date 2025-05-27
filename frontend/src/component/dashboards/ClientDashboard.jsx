@@ -738,10 +738,10 @@ const ClientDashboard = ({ user, onLogout }) => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Overlay for mobile when sidebar is open */}
-      {isMobile && isSidebarOpen && (
+       {/* Overlay for mobile when sidebar is open */}
+       {isMobile && isSidebarOpen && (
         <div
-          className="fixed top-0 left-0 w-full h-full bg-black opacity-50 z-40"
+          className="fixed top-0 left-0 w-full h-full opacity-50 z-40 bg-black"
           onClick={toggleSidebar}
         ></div>
       )}
@@ -814,29 +814,24 @@ const ClientDashboard = ({ user, onLogout }) => {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main content */}
       <div
-        className={`transition-all duration-300 ease-in-out ${
+        className={`${
           isMobile ? "ml-0" : isSidebarOpen ? "ml-64" : "ml-20"
-        }`}
+        } transition-all duration-300 ease-in-out`}
       >
-        {/* <header className="bg-white shadow-sm sticky top-0 z-30">
-          <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div className="flex items-center gap-2">
-              {isMobile && (
-                <button
-                  className="text-black hover:text-gray-700 focus:outline-none"
-                  onClick={toggleSidebar}
-                >
-                  <FaBars size={20} />
-                </button>
-              )}
-              <h1 className="text-lg sm:text-xl font-bold text-gray-800 truncate">
-                Welcome, {user.name} | {user.businessName}
-              </h1>
-            </div>
+        {/* Mobile header with toggle button */}
+        {isMobile && (
+          <div className="flex justify-between items-center p-4 bg-white shadow-sm">
+            <button
+              className="p-2 bg-gray-800 text-white rounded-md"
+              onClick={toggleSidebar}
+            >
+              <FaBars />
+            </button>
+            <h4 className="m-0 font-bold">Client Dashboard</h4>
           </div>
-        </header> */}
+        )}
 
         <main className="container mx-auto p-2 sm:p-4">
         <h2 className="text-xl sm:text-2xl font-bold mb-4">{activeTab}</h2>
