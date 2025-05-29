@@ -40,18 +40,24 @@ const SuperAdminLoginForm = ({ onLogin}) => {
         throw new Error(response.data.message || 'Login failed');
       }
 
-      // Structure the data properly before calling onLogin
-      const loginData = {
+      // Store super admin token
+      localStorage.setItem('superadmintoken', response.data.token);
+
+      // Store super admin data
+      const superAdminData = {
+        role: 'superadmin',
+        name: response.data.superadmin?.name || response.data.name,
+        email: response.data.superadmin?.email || response.data.email
+      };
+      localStorage.setItem('superAdminData', JSON.stringify(superAdminData));
+
+      // Call onLogin with structured data
+      onLogin({
         token: response.data.token,
         userType: 'superadmin',
-        user: response.data.superadmin || {
-          _id: response.data._id,
-          ...response.data
-        }
-      };
-
-      // Call the onLogin function with the properly structured data
-      onLogin(loginData);
+        name: superAdminData.name,
+        email: superAdminData.email
+      });
       
       // Navigate to dashboard after successful login
       navigate('/dashboard');

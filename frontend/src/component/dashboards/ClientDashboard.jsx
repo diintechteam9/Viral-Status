@@ -88,30 +88,47 @@ const ClientDashboard = ({ user, onLogout }) => {
       preview: null
     });
 
-    const userId = localStorage.getItem('userId');
+    // Get client authentication data
+    const getClientAuth = () => {
+      const clientData = sessionStorage.getItem('userData');
+      const token = sessionStorage.getItem('clienttoken');
+      
+      if (!clientData || !token) {
+        return { clientId: null, token: null };
+      }
+
+      try {
+        const parsedClientData = JSON.parse(clientData);
+        return {
+          clientId: parsedClientData.clientId,
+          token: token
+        };
+      } catch (error) {
+        console.error('Error parsing client data:', error);
+        return { clientId: null, token: null };
+      }
+    };
 
     const fetchFiles = async () => {
       try {
         setLoading(true);
-        const userId = localStorage.getItem('userId');
-        const token = localStorage.getItem('token');
+        const { clientId, token } = getClientAuth();
         
-        if (!userId || !token) {
-          console.error('Missing authentication:', { userId, token: !!token });
+        if (!clientId || !token) {
+          console.error('Missing authentication:', { clientData: !!clientId, token: !!token });
           setError('Authentication required. Please log in again.');
           return;
         }
-        
-        console.log('Fetching files with data:', { 
-          userId, 
-          folderName: currentFolder,
-          token: token.substring(0, 10) + '...' // Log partial token for security
+
+        console.log('Making request to:', `${API_BASE_URL}/api/datastore/list-files`);
+        console.log('Request headers:', {
+          'Authorization': `Bearer ${token.substring(0, 10)}...`
         });
         
         const response = await axios.post(
           `${API_BASE_URL}/api/datastore/list-files`,
           {
-            userId,
+            userId: clientId,
             folderName: currentFolder
           },
           {
@@ -142,7 +159,7 @@ const ClientDashboard = ({ user, onLogout }) => {
 
         if (response.data.files.length === 0) {
           console.log('No files found in MongoDB for folder:', {
-            userId,
+            clientId,
             folderName: currentFolder,
             originalFolderName: currentFolder
           });
@@ -157,7 +174,7 @@ const ClientDashboard = ({ user, onLogout }) => {
               console.log('Processing file:', {
                 fileName: file.fileName,
                 folderName: currentFolder,
-                userId
+                clientId
               });
 
               const downloadResponse = await axios.post(
@@ -165,7 +182,7 @@ const ClientDashboard = ({ user, onLogout }) => {
                 {
                   fileName: file.fileName,
                   folderName: currentFolder,
-                  userId
+                  userId: clientId
                 },
                 {
                   headers: {
@@ -258,6 +275,12 @@ const ClientDashboard = ({ user, onLogout }) => {
         setUploading(true);
         setError('');
 
+        const { clientId, token } = getClientAuth();
+        if (!clientId || !token) {
+          setError('Authentication required. Please log in again.');
+          return;
+        }
+
         console.log('Starting upload process for file:', {
           name: selectedFile.name,
           type: selectedFile.type,
@@ -268,12 +291,16 @@ const ClientDashboard = ({ user, onLogout }) => {
         const uploadUrlResponse = await axios.post(`${API_BASE_URL}/api/datastore/get-upload-url`, {
           fileName: selectedFile.name,
           folderName: currentFolder,
-          userId,
+          userId: clientId,
           type: 'Image',
           title: selectedFile.name,
           description: '',
           fileSize: selectedFile.size,
           mimeType: selectedFile.type
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
 
         console.log('Received upload URL response:', uploadUrlResponse.data);
@@ -316,18 +343,21 @@ const ClientDashboard = ({ user, onLogout }) => {
 
     const handleDelete = async (fileName) => {
       try {
+        const { clientId, token } = getClientAuth();
+        if (!clientId || !token) {
+          setError('Authentication required. Please log in again.');
+          return;
+        }
+
         // First delete from S3
         await axios.post(`${API_BASE_URL}/api/datastore/delete-file`, {
           fileName,
           folderName: currentFolder,
-          userId
-        });
-
-        // Then delete from MongoDB
-        await axios.post(`${API_BASE_URL}/api/datastore/delete-file-metadata`, {
-          fileName,
-          folderName: currentFolder,
-          userId
+          userId: clientId
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
 
         // Refresh the file list
@@ -347,10 +377,20 @@ const ClientDashboard = ({ user, onLogout }) => {
 
     const handleDownload = async (fileName) => {
       try {
+        const { clientId, token } = getClientAuth();
+        if (!clientId || !token) {
+          setError('Authentication required. Please log in again.');
+          return;
+        }
+
         const response = await axios.post(`${API_BASE_URL}/api/datastore/get-download-url`, {
           fileName,
           folderName: currentFolder,
-          userId
+          userId: clientId
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
         window.open(response.data.url, '_blank');
       } catch (err) {
@@ -418,16 +458,26 @@ const ClientDashboard = ({ user, onLogout }) => {
         setUploading(true);
         setError('');
 
+        const { clientId, token } = getClientAuth();
+        if (!clientId || !token) {
+          setError('Authentication required. Please log in again.');
+          return;
+        }
+
         // 1. Get upload URL
         const uploadUrlResponse = await axios.post(`${API_BASE_URL}/api/datastore/get-upload-url`, {
           fileName: imageFormData.file.name,
           folderName: currentFolder,
-          userId,
+          userId: clientId,
           type: 'Image',
           title: imageFormData.title || imageFormData.file.name,
           description: imageFormData.description,
           fileSize: imageFormData.file.size,
           mimeType: imageFormData.file.type
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
 
         if (!uploadUrlResponse.data.url) {

@@ -40,6 +40,7 @@ const AdminRegisterForm = ({ onSuccess, switchToLogin }) => {
       setError('');
       onSuccess();
       alert('Admin registration successful! You can now log in.');
+      navigate('/admin/login');
     } catch (err) {
       console.error('Registration error:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Registration failed. Please try again.';

@@ -33,9 +33,14 @@ const getUploadUrl = async (req, res) => {
         
         // Validate required fields
         if (!fileName || !folderName || !userId) {
-            console.log('Missing required fields:', { fileName, folderName, userId });
+            const missingFields = [];
+            if (!fileName) missingFields.push('file name');
+            if (!folderName) missingFields.push('folder name');
+            if (!userId) missingFields.push('user ID');
+            
             return res.status(400).json({ 
-                error: "Missing required fields",
+                error: "Missing required information",
+                message: `Please provide: ${missingFields.join(', ')}`,
                 details: { fileName, folderName, userId }
             });
         }
@@ -45,28 +50,33 @@ const getUploadUrl = async (req, res) => {
         const fileExtension = fileName.split('.').pop().toLowerCase();
         const detectedMimeType = `image/${fileExtension}`;
         
-        console.log('File type validation:', {
-            fileName,
-            mimeType,
-            detectedMimeType,
-            allowedTypes
-        });
-
         if (!allowedTypes.includes(detectedMimeType)) {
-            console.log('Invalid file type detected');
             return res.status(400).json({ 
                 error: "Invalid file type",
-                details: { fileName, mimeType: detectedMimeType }
+                message: `Only ${allowedTypes.map(type => type.split('/')[1].toUpperCase()).join(', ')} files are allowed`,
+                details: { 
+                    fileName, 
+                    detectedType: detectedMimeType,
+                    allowedTypes 
+                }
+            });
+        }
+
+        // Validate file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+        if (fileSize > maxSize) {
+            return res.status(400).json({
+                error: "File too large",
+                message: "Maximum file size is 5MB",
+                details: {
+                    fileSize,
+                    maxSize,
+                    sizeInMB: (fileSize / (1024 * 1024)).toFixed(2)
+                }
             });
         }
 
         const key = `${userId}/${folderName}/${fileName}`;
-        console.log('Generating upload URL for:', { 
-            key, 
-            bucket: BUCKET_NAME,
-            contentType: detectedMimeType
-        });
-
         const command = new PutObjectCommand({
             Bucket: BUCKET_NAME,
             Key: key,
@@ -74,14 +84,10 @@ const getUploadUrl = async (req, res) => {
             ACL: 'private'
         });
 
-        console.log('S3 command created:', command);
-
         const url = await getSignedUrl(s3, command, { 
             expiresIn: 3600,
             signableHeaders: new Set(['host', 'content-type'])
         });
-        
-        console.log('Generated signed URL successfully');
         
         // Create datastore entry
         const datastoreData = {
@@ -100,15 +106,13 @@ const getUploadUrl = async (req, res) => {
             }
         };
 
-        console.log('Creating datastore entry with data:', datastoreData);
-
         const datastore = await Datastore.create(datastoreData);
-        console.log('Successfully created datastore entry:', datastore._id);
 
         res.json({ 
             url,
             datastoreId: datastore._id,
-            key
+            key,
+            message: "Upload URL generated successfully"
         });
     } catch (err) {
         console.error("UPLOAD URL ERROR:", {
@@ -116,8 +120,17 @@ const getUploadUrl = async (req, res) => {
             stack: err.stack,
             name: err.name
         });
+        
+        let errorMessage = "Failed to generate upload URL";
+        if (err.name === 'AccessDenied') {
+            errorMessage = "Access denied to storage service";
+        } else if (err.name === 'NoSuchBucket') {
+            errorMessage = "Storage service configuration error";
+        }
+        
         res.status(500).json({ 
-            error: "Failed to generate upload URL",
+            error: errorMessage,
+            message: "Please try again or contact support if the problem persists",
             details: err.message
         });
     }
@@ -128,44 +141,31 @@ const listFiles = async (req, res) => {
     try {
         const { userId, folderName } = req.body;
         if (!userId || !folderName) {
+            const missingFields = [];
+            if (!userId) missingFields.push('user ID');
+            if (!folderName) missingFields.push('folder name');
+            
             return res.status(400).json({ 
-                error: "Missing required fields",
+                error: "Missing required information",
+                message: `Please provide: ${missingFields.join(', ')}`,
                 details: { userId, folderName }
             });
         }
 
-        console.log('Listing files for:', { userId, folderName });
-
-        // First, let's check all entries in the database
-        const allEntries = await Datastore.find({});
-        console.log('All entries in database:', JSON.stringify(allEntries, null, 2));
-        console.log('Total entries in database:', allEntries.length);
-
-        // Now check entries for this user
-        const userEntries = await Datastore.find({ 'metadata.userId': userId });
-        console.log('Entries for this user:', JSON.stringify(userEntries, null, 2));
-        console.log('Total entries for user:', userEntries.length);
-
-        // Finally, check entries for this folder
         const query = {
             'metadata.userId': userId,
             'metadata.folderName': folderName
         };
         
-        console.log('MongoDB Query:', query);
-        
         const datastoreEntries = await Datastore.find(query);
         
-        console.log('Raw MongoDB Response:', JSON.stringify(datastoreEntries, null, 2));
-        console.log('Number of entries found:', datastoreEntries.length);
-
-        // If no entries in MongoDB, return empty array
         if (!datastoreEntries || datastoreEntries.length === 0) {
-            console.log('No entries found in MongoDB');
-            return res.status(200).json({ files: [] });
+            return res.status(200).json({ 
+                files: [],
+                message: "No files found in this folder"
+            });
         }
 
-        // Map MongoDB entries to the expected format
         const filesWithMetadata = datastoreEntries.map(entry => ({
             fileName: entry.fileName,
             id: entry._id,
@@ -176,13 +176,22 @@ const listFiles = async (req, res) => {
             createdAt: entry.createdAt
         }));
 
-        console.log('Processed files:', JSON.stringify(filesWithMetadata, null, 2));
-
-        res.status(200).json({ files: filesWithMetadata });
+        res.status(200).json({ 
+            files: filesWithMetadata,
+            message: `Found ${filesWithMetadata.length} file(s)`,
+            count: filesWithMetadata.length
+        });
     } catch (err) {
         console.error("LIST FILES ERROR:", err);
+        
+        let errorMessage = "Failed to list files";
+        if (err.name === 'CastError') {
+            errorMessage = "Invalid user ID format";
+        }
+        
         res.status(500).json({ 
-            error: "Failed to list files",
+            error: errorMessage,
+            message: "Please try again or contact support if the problem persists",
             details: err.message
         });
     }
@@ -193,39 +202,48 @@ const getDownloadUrl = async (req, res) => {
     try {
         const { fileName, folderName, userId } = req.body;
         if (!fileName || !folderName || !userId) {
+            const missingFields = [];
+            if (!fileName) missingFields.push('file name');
+            if (!folderName) missingFields.push('folder name');
+            if (!userId) missingFields.push('user ID');
+            
             return res.status(400).json({ 
-                error: "Missing required fields",
+                error: "Missing required information",
+                message: `Please provide: ${missingFields.join(', ')}`,
                 details: { fileName, folderName, userId }
             });
         }
 
         const key = `${userId}/${folderName}/${fileName}`;
-        console.log('Generating download URL for:', key);
-
         const command = new GetObjectCommand({ 
             Bucket: BUCKET_NAME, 
             Key: key 
         });
 
-        // Generate URL with explicit expiration time
         const url = await getSignedUrl(s3, command, { 
-            expiresIn: 3600, // 1 hour expiry
+            expiresIn: 3600,
             signableHeaders: new Set(['host']),
             unhoistableHeaders: new Set(['host'])
         });
 
-        console.log('Generated download URL:', {
-            key,
-            urlLength: url.length,
-            urlStart: url.substring(0, 50),
-            urlEnd: url.substring(-50)
+        res.json({ 
+            url,
+            message: "Download URL generated successfully",
+            expiresIn: "1 hour"
         });
-
-        res.json({ url });
     } catch (err) {
         console.error("DOWNLOAD URL ERROR:", err);
+        
+        let errorMessage = "Failed to generate download URL";
+        if (err.name === 'NoSuchKey') {
+            errorMessage = "File not found in storage";
+        } else if (err.name === 'AccessDenied') {
+            errorMessage = "Access denied to file";
+        }
+        
         res.status(500).json({ 
-            error: "Failed to generate download URL",
+            error: errorMessage,
+            message: "Please try again or contact support if the problem persists",
             details: err.message
         });
     }
@@ -236,15 +254,21 @@ const deleteFile = async (req, res) => {
     try {
         const { fileName, folderName, userId } = req.body;
         if (!fileName || !folderName || !userId) {
+            const missingFields = [];
+            if (!fileName) missingFields.push('file name');
+            if (!folderName) missingFields.push('folder name');
+            if (!userId) missingFields.push('user ID');
+            
             return res.status(400).json({ 
-                error: "Missing required fields",
+                error: "Missing required information",
+                message: `Please provide: ${missingFields.join(', ')}`,
                 details: { fileName, folderName, userId }
             });
         }
 
         const key = `${userId}/${folderName}/${fileName}`;
-        console.log('Deleting file:', key);
-
+        
+        // First delete from S3
         const command = new DeleteObjectCommand({ 
             Bucket: BUCKET_NAME, 
             Key: key 
@@ -252,18 +276,51 @@ const deleteFile = async (req, res) => {
 
         await s3.send(command);
         
-        // Delete from datastore
-        await Datastore.findOneAndDelete({
+        // Then delete from MongoDB
+        const deleteResult = await Datastore.findOneAndDelete({
             'metadata.userId': userId,
             'metadata.folderName': folderName,
-            fileName: fileName
+            'fileName': fileName
         });
 
-        res.json({ message: "File deleted successfully" });
+        if (!deleteResult) {
+            return res.status(404).json({
+                error: "File not found",
+                message: "The file was not found in the database",
+                details: {
+                    fileName,
+                    folderName,
+                    userId
+                }
+            });
+        }
+
+        res.json({ 
+            message: "File deleted successfully",
+            details: {
+                deletedFromS3: true,
+                deletedFromMongoDB: true,
+                fileName,
+                folderName
+            }
+        });
     } catch (err) {
-        console.error("DELETE FILE ERROR:", err);
+        console.error("DELETE FILE ERROR:", {
+            message: err.message,
+            stack: err.stack,
+            name: err.name
+        });
+        
+        let errorMessage = "Failed to delete file";
+        if (err.name === 'NoSuchKey') {
+            errorMessage = "File not found in storage";
+        } else if (err.name === 'AccessDenied') {
+            errorMessage = "Access denied to delete file";
+        }
+        
         res.status(500).json({ 
-            error: "File deletion failed",
+            error: errorMessage,
+            message: "Please try again or contact support if the problem persists",
             details: err.message
         });
     }

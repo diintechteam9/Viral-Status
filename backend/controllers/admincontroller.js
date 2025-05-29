@@ -5,7 +5,10 @@ const Client = require("../models/client");
 
 // Generate JWT Token for admin
 const generateAdminToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+  return jwt.sign({ 
+    id,
+    userType: 'admin'  // Add userType to the token
+  }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
 };
@@ -49,18 +52,24 @@ const loginAdmin = async (req, res) => {
     const { email, password } = req.body;
 
     const admin = await Admin.findOne({ email });
+    if (!admin) {
+      return res.status(401).json({ message: "Admin not found" });
+    }
 
     const ispasswordvalid = await bcrypt.compare(password, admin.password);
-
     if (!ispasswordvalid) {
-      return res.status(401).json({ meassage: "invalid credentials" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    if (!admin) {
-      return res.status(401).json({ message: "admin not found" });
-    }
-
-    const token = generateAdminToken(admin._id);
+    const token = jwt.sign(
+      { 
+        id: admin._id,
+        email: admin.email,
+        userType: 'admin'
+      }, 
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     res.status(200).json({
       success: true,
@@ -68,9 +77,10 @@ const loginAdmin = async (req, res) => {
       admin,
     });
 
-    console.log("admin login successfully");
+    console.log("Admin login successful");
   } catch (error) {
-    console.log("login failed");
+    console.error("Login failed:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -205,11 +215,65 @@ const getClients = async (req, res) => {
     }
   }
 
+// Get client token for admin access
+const getClientToken = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const adminId = req.user.id;
+
+    console.log('getClientToken called with:', {
+      clientId,
+      adminId,
+      userType: req.user.userType
+    });
+
+    // Verify admin exists and is authenticated
+    if (req.user.userType !== 'admin') {
+      console.log('Invalid user type:', req.user.userType);
+      return res.status(401).json({ message: 'Only admins can access client tokens' });
+    }
+
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      console.log('Admin not found:', adminId);
+      return res.status(401).json({ message: 'Admin not found' });
+    }
+    console.log('Admin verified:', admin.email);
+
+    // Get client details
+    const client = await Client.findById(clientId);
+    if (!client) {
+      console.log('Client not found:', clientId);
+      return res.status(404).json({ message: 'Client not found' });
+    }
+    console.log('Client found:', client.email);
+
+    // Generate token for client with admin access flag
+    const token = jwt.sign(
+      { 
+        id: client._id,
+        email: client.email,
+        userType: 'client',
+        adminAccess: true // Flag to indicate this is admin-accessed client session
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    console.log('Generated client token for:', client.email);
+    res.json({ token });
+  } catch (error) {
+    console.error('Error in getClientToken:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   registerAdmin,
   registerclient,
   loginAdmin,
   getClients,
   getClientById,
-  deleteclient
+  deleteclient,
+  getClientToken
 };

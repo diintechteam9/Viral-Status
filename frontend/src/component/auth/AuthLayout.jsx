@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import RoleSelection from "./RoleSelection";
 import LoginForm from "./LoginForm";
 import RegisterForm from "./RegisterForm";
@@ -7,8 +7,9 @@ import RegisterForm from "./RegisterForm";
 const AuthLayout = ({ onLogin }) => {
   const [authState, setAuthState] = useState({
     step: "role-selection", // 'role-selection', 'register', 'login'
-    userType: null, // 'user', 'admin', 'client'
+    userType: null, // 'user', 'client'
   });
+  const navigate = useNavigate();
 
   const handleRoleSelect = (role) => {
     setAuthState({
@@ -38,9 +39,14 @@ const AuthLayout = ({ onLogin }) => {
     });
   };
 
+  const handleLoginSuccess = (loginData) => {
+    onLogin(loginData);
+    navigate('/dashboard');
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className=" max-w-xl w-full bg-white rounded-lg shadow-md p-8">
+      <div className="max-w-xl w-full bg-white rounded-lg shadow-md p-8">
         <h1 className="text-2xl font-bold text-center mb-6 text-black">
           {authState.step === "role-selection" && "Select Your Role"}
           {authState.step === "login" && `Login as ${authState.userType}`}
@@ -54,7 +60,7 @@ const AuthLayout = ({ onLogin }) => {
         {authState.step === "login" && (
           <LoginForm
             userType={authState.userType}
-            onLogin={onLogin}
+            onLogin={handleLoginSuccess}
             switchToRegister={switchToRegister}
           />
         )}

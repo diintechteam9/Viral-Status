@@ -30,13 +30,14 @@ const AdminDashboard = ({ user, onLogout }) => {
   const [clients, setclients] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [selectedClientName, setSelectedClientName] = useState('');
   const [clientcount,setclientcount]=useState(null);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
+  const [loggedInClients, setLoggedInClients] = useState(new Set());
+  const [Auth,setAuth] = useState("Authenticate")
   const [newClient, setNewClient] = useState({
     name: '',
     email: '',
@@ -50,6 +51,7 @@ const AdminDashboard = ({ user, onLogout }) => {
     panNo: '',
     aadharNo: ''
   });
+  const [loadingClientId, setLoadingClientId] = useState(null);
 
   // Check if screen is mobile and handle resize events
   useEffect(() => {
@@ -109,38 +111,98 @@ const AdminDashboard = ({ user, onLogout }) => {
     }
   },[activeTab])
 
-  // Handle client login
-  const handleClientLogin = (loginData) => {
-    // Close the modal
-    setShowLoginModal(false);
-    
-    // Use the login data from the form to authenticate the client
-    // The App component will handle setting localStorage and rendering the ClientDashboard
-    // We don't need window.location.href as onLogin will update state in App component
-    onLogout(); // First logout from admin
-    
-    // Small delay to ensure logout completes before login
-    setTimeout(() => {
-      // Use the onLogin prop which was passed down from App
-      // This function is defined in App.jsx and handles all the authentication logic
-      window.location.href = "/"; // Redirect to root where the auth state will be checked
-      
-      // Store login data for the auth flow to pick up
-      localStorage.setItem('token', loginData.token);
-      localStorage.setItem('userType', 'client');
-      localStorage.setItem('userId', loginData.user._id || loginData.user.id);
-    }, 100);
-  };
-  
   // Open login modal for a specific client
-  const openClientLogin = (clientId, clientEmail, clientName) => {
-    setSelectedClientId(clientId);
-    setSelectedClientName(clientName);
-    setShowLoginModal(true);
-    
-    // Store the client email in sessionStorage for the login form to use
-    if (clientEmail) {
-      sessionStorage.setItem('tempClientEmail', clientEmail);
+  const openClientLogin = async (clientId, clientEmail, clientName) => {
+    try {
+      setLoadingClientId(clientId);
+      console.log('Starting client login process for:', clientId);
+      
+      // Get admin token from localStorage
+      const adminToken = localStorage.getItem('admintoken');
+      if (!adminToken) {
+        console.error('No admin token found');
+        alert('Admin session expired. Please login again.');
+        return;
+      }
+
+      // Make API call to get client token
+      const response = await fetch(`${API_BASE_URL}/api/admin/get-client-token/${clientId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to get client access token');
+      }
+
+      const data = await response.json();
+      
+      if (data.token) {
+        // First open a blank window
+        setAuth("Login")
+        const clientWindow = window.open('about:blank', '_blank');
+        
+        if (!clientWindow) {
+          throw new Error('Failed to open new window. Please allow popups for this site.');
+        }
+
+        // Add client to logged in set
+        setLoggedInClients(prev => new Set([...prev, clientId]));
+
+        // Write the HTML content that will set sessionStorage and redirect
+        const html = `
+          <html>
+            <head>
+              <title>Loading...</title>
+              <script>
+                // Clear any existing session data
+                sessionStorage.clear();
+                
+                // Set the credentials in sessionStorage
+                sessionStorage.setItem('clienttoken', '${data.token}');
+                sessionStorage.setItem('userData', JSON.stringify({
+                  role: 'client',
+                  userType: 'client',
+                  name: '${clientName}',
+                  email: '${clientEmail}',
+                  clientId: '${clientId}'
+                }));
+                
+                // Redirect to client dashboard
+                window.location.href = '/auth/dashboard';
+              </script>
+            </head>
+            <body>
+              <p>Loading client dashboard...</p>
+            </body>
+          </html>
+        `;
+
+        // Write the HTML to the new window
+        clientWindow.document.open();
+        clientWindow.document.write(html);
+        clientWindow.document.close();
+
+        // Add event listener for window close
+        clientWindow.onbeforeunload = () => {
+          setLoggedInClients(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(clientId);
+            return newSet;
+          });
+        };
+      } else {
+        throw new Error('No token received from server');
+      }
+    } catch (error) {
+      console.error('Error in openClientLogin:', error);
+      alert(error.message || 'Failed to access client dashboard');
+    } finally {
+      setLoadingClientId(null);
     }
   };
 
@@ -260,29 +322,6 @@ const AdminDashboard = ({ user, onLogout }) => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Client Login Modal */}
-      {showLoginModal && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative">
-            <button 
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-              onClick={() => setShowLoginModal(false)}
-            >
-              <FaTimes size={20} />
-            </button>
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4 text-center">Client Login</h2>
-              {selectedClientName && (
-                <p className="text-center text-gray-600 mb-4">
-                  Logging in as: <span className="font-semibold">{selectedClientName}</span>
-                </p>
-              )}
-              <LoginForm userType="client" onLogin={handleClientLogin} switchToRegister={() => {}} />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Add Client Modal */}
       {showAddClientModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -459,7 +498,7 @@ const AdminDashboard = ({ user, onLogout }) => {
       >
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
           {isSidebarOpen && (
-            <h4 className="m-0 font-semibold text-lg">Admin Panel</h4>
+            <h4 className="m-0 font-semibold text-lg">Admin Dasboard</h4>
           )}
           <button
             className="text-black hover:text-gray-700 focus:outline-none"
@@ -666,18 +705,22 @@ const AdminDashboard = ({ user, onLogout }) => {
                           <td className="px-6 py-6 text-sm font-medium flex space-x-4">
                             <button 
                               onClick={() => openClientLogin(client._id, client.email, client.name)} 
-                              className="text-blue-500 hover:text-blue-700" 
-                              title="Client Login"
+                              className={`${
+                                loggedInClients.has(client._id) 
+                                  ? 'bg-green-500 hover:bg-green-600' 
+                                  : 'bg-red-500 hover:bg-red-600'
+                              } text-white p-2 rounded-lg transition-colors`}
+                              title={loggedInClients.has(client._id) ? 'Client Logged In' : 'Client Login'}
                             >
-                              Login
+                              {loggedInClients.has(client._id) ? 'Logged In' : 'Authenticate'}
                             </button>
-                            <button 
+                            {/* <button 
                               onClick={() => confirmDelete(client._id)} 
                               className="text-red-500 hover:text-red-700" 
                               title="Delete Client"
                             >
                               <FaTrash />
-                            </button>
+                            </button> */}
                           </td>
                         </tr>
                       ))}

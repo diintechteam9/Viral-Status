@@ -37,7 +37,7 @@ const Navbar = () => {
                   {link.name}
                 </a>
               ))}
-              <NavLink to='/selectrole'>
+              <NavLink to='/auth'>
               <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-pink-500 text-white hover:opacity-90 transition-all duration-300 font-medium">
                 <LuLogIn className="text-lg" />
                 Login
@@ -79,7 +79,7 @@ const Navbar = () => {
               {link.name}
             </a>
           ))}
-          <NavLink to='/selectrole'>
+          <NavLink to='/auth'>
             <button className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-pink-500 text-white hover:opacity-90 transition-all duration-300 font-medium">
               <LuLogIn className="text-lg" />
               Login

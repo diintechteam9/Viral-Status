@@ -58,12 +58,10 @@ const LoginForm = ({ userType, onLogin, switchToRegister }) => {
       // Structure the data for the app to consume
       const loginData = {
         token: response.data.token,
-        userType,
-        user: response.data.user || response.data.client || {
-          _id: response.data._id || decoded.sub,
-          name: decoded.name,
-          email: decoded.email
-        }
+        role: userType,
+        name: response.data.user?.name || response.data.client?.name || decoded.name,
+        email: response.data.user?.email || response.data.client?.email || decoded.email,
+        clientId: response.data.client?._id || response.data.user?._id || response.data._id
       };
 
       // Call the onLogin function with the properly structured data
@@ -100,15 +98,7 @@ const LoginForm = ({ userType, onLogin, switchToRegister }) => {
           throw new Error('Invalid user type');
       }
 
-      console.log('Attempting login with:', {
-        endpoint,
-        email: formData.email,
-        userType,
-      });
-
       const response = await axios.post(`${API_BASE_URL}/${endpoint}`, formData);
-      
-      console.log('Server response for login:', response.data);
       
       if (!response.data.success) {
         throw new Error(response.data.message || 'Login failed');
@@ -117,14 +107,11 @@ const LoginForm = ({ userType, onLogin, switchToRegister }) => {
       // Structure the data properly before calling onLogin
       const loginData = {
         token: response.data.token,
-        userType,
-        user: response.data.client || response.data.user || response.data.admin || {
-          _id: response.data._id,
-          ...response.data
-        }
+        role: userType,
+        name: response.data.user?.name || response.data.client?.name,
+        email: response.data.user?.email || response.data.client?.email,
+        clientId: response.data.client?._id || response.data.user?._id || response.data._id
       };
-
-      console.log('Processed login data:', loginData);
 
       // Call the onLogin function with the properly structured data
       onLogin(loginData);

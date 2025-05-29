@@ -27,9 +27,6 @@ const RegisterForm = ({ userType, onSuccess, switchToLogin }) => {
         case 'user':
           endpoint = 'api/user/register';
           break;
-        // case 'admin':
-        //   endpoint = 'api/admin/register';
-        //   break;
         case 'client':
           endpoint = 'api/client/register';
           break;
@@ -38,10 +35,19 @@ const RegisterForm = ({ userType, onSuccess, switchToLogin }) => {
       }
 
       const response = await axios.post(`${API_BASE_URL}/${endpoint}`, formData);
-      console.log(response)
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Registration failed');
+      }
+
+      // Show success message and switch to login
+      setError('');
       onSuccess();
+      alert(`${userType === 'client' ? 'Business' : 'User'} registration successful! You can now log in.`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      console.error('Registration error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Registration failed. Please try again.';
+      setError(`Error: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

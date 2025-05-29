@@ -40,21 +40,27 @@ const AdminLoginForm = ({ onLogin, switchToRegister }) => {
         throw new Error(response.data.message || 'Login failed');
       }
 
-      // Structure the data properly before calling onLogin
-      const loginData = {
-        token: response.data.token,
-        userType: 'admin',
-        user: response.data.admin || {
-          _id: response.data._id,
-          ...response.data
-        }
-      };
+      // Store admin token
+      localStorage.setItem('admintoken', response.data.token);
 
-      // Call the onLogin function with the properly structured data
-      onLogin(loginData);
+      // Store admin data
+      const adminData = {
+        role: 'admin',
+        name: response.data.admin?.name || response.data.name,
+        email: response.data.admin?.email || response.data.email
+      };
+      localStorage.setItem('adminData', JSON.stringify(adminData));
+
+      // Call onLogin with structured data
+      onLogin({
+        token: response.data.token,
+        name: adminData.name,
+        email: adminData.email,
+        role: 'admin'
+      });
       
       // Navigate to dashboard after successful login
-      navigate('/dashboard');
+      navigate('/admin/dashboard');
     } catch (err) {
       console.error('Login error:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Invalid admin credentials. Please try again.';
